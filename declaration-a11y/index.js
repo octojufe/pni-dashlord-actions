@@ -3,7 +3,7 @@ const { fuzzy } = require("fast-fuzzy");
 
 const { JSDOM } = jsdom;
 
-const searches = [
+const mandatoryAccessibilityRate = [
   {
     needle: "Accessibilité : non conforme",
   },
@@ -15,10 +15,83 @@ const searches = [
   },
 ];
 
+const DATE_PATTERNS = [
+  // European formats: 15/04/2023, 15-04-2023, 15.04.2023
+  /\b(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})\b/g,
+  // Month-year european formats: 04/2023, 04-2023, 04.2023
+  /\b(\d{2}[\/\-\.]\d{4})\b/g,
+  // Literal French format: 15 avril 2023, 15 avr. 2023
+  /\b(\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|janv?\.?|févr?\.?|avr?\.?|juil?\.?|sept?\.?|oct?\.?|nov?\.?|déc?\.?)\s+\d{4})\b/gi,
+]
+
+const FR_MONTHS = {
+  janvier: 0, janv: 0,
+  février: 1, févr: 1,
+  mars: 2,
+  avril: 3, avr: 3,
+  mai: 4,
+  juin: 5,
+  juillet: 6, juil: 6,
+  août: 7, aout: 7,
+  septembre: 8, sept: 8,
+  octobre: 9, oct: 9,
+  novembre: 10, nov: 10,
+  décembre: 11, déc: 11
+}
+
+function parseDate(dateString) {
+  dateString = dateString.trim()
+
+  let match = dateString.match(/^(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})$/)
+  if (match) return new Date(+match[3], +match[2], +match[1])
+
+  match = dateString.match(/^(\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|janv?\.?|févr?\.?|avr?\.?|juil?\.?|sept?\.?|oct?\.?|nov?\.?|déc?\.?)\s+\d{4})$/i)
+  if (match) {
+    const month = FR_MONTHS[match[2].toLowerCase().replace('.', '')]
+    if (month) return new Date(+match[3], month, + match[1])
+  }
+
+  return null
+}
+
+function findMostRecentDate(html) {
+  const candidates = new Set();
+  for (const pattern of DATE_PATTERNS) {
+    for (const match of html.matchAll(pattern)) {
+      candidates.add(match[1] || match[0]);
+    }
+  }
+
+  const validDates = [];
+  for (const candidate of candidates) {
+    const date = parseDate(candidate);
+    if (date && date <+ new Date()) {
+      validDates.push({ raw: candidate, date});
+    }
+  }
+
+  if (validDates.length === 0) return { found: false };
+
+  validDates.sort((a, b) => b.date - a.date);
+  const mostRecent = validDates[0];
+  const threeYearsAgo = new Date()
+  threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+  const isLessThan3Years = mostRecent.date >= threeYearsAgo;
+
+  // TODO: For test purposes, remove useless data
+  return ({
+    found: true,
+    mostRecentDate: mostRecent.date,
+    rawString: mostRecent.raw,
+    isLessThan3Years,
+    allDatesFound: validDates
+  })
+}
+
 const analyseDom = async (dom, { url = "" } = {}) => {
   const text = dom.window.document.body.textContent;
   // fuzzy find the best match
-  const status = searches
+  const status = mandatoryAccessibilityRate
     .map(({ needle }) => ({ needle, score: fuzzy(needle, text) }))
     .sort((a, b) => a.score - b.score)
     .reverse();
@@ -62,6 +135,17 @@ const analyseDom = async (dom, { url = "" } = {}) => {
           }
         }
       });
+    }
+
+    if (result.declarationUrl) {
+      const html = await fetch(result.declarationUrl).then(res => res.text());
+      const declarationDate = findMostRecentDate(html);
+      if (declarationDate.found) {
+        result.declarationDateFound = true;
+        result.declarationIsUpToDate = declarationDate.isLessThan3Years;
+      } else {
+        result.declarationDateFound = false;
+      }
     }
   }
   return result;
