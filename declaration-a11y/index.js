@@ -39,19 +39,26 @@ const FR_MONTHS = {
   décembre: 11, déc: 11
 }
 
+function frenchMonthMapper(monthString) {
+  return FR_MONTHS[monthString.toLowerCase().replace('.', '')]
+}
+
 function parseDate(dateString) {
   dateString = dateString.trim()
 
-  let match = dateString.match(/^(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})$/)
-  if (match) return new Date(+match[3], +match[2], +match[1])
-
-  match = dateString.match(/^(\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|janv?\.?|févr?\.?|avr?\.?|juil?\.?|sept?\.?|oct?\.?|nov?\.?|déc?\.?)\s+\d{4})$/i)
-  if (match) {
-    const month = FR_MONTHS[match[2].toLowerCase().replace('.', '')]
-    if (month) return new Date(+match[3], month, + match[1])
+  let splitDate = dateString.split(/[.\/-]/)
+  if (splitDate.length === 3) {
+    return new Date(splitDate[2], splitDate[1] - 1, splitDate[0]);
+  } else if (splitDate.length === 2) {
+    return new Date(splitDate[1], splitDate[0] - 1);
   }
 
-  return null
+  splitDate = dateString.split(" ")
+  if (splitDate.length === 3) {
+    return new Date(splitDate[2], frenchMonthMapper(splitDate[1]), splitDate[0]);
+  } else if (splitDate.length === 2) {
+    return new Date(splitDate[1], frenchMonthMapper(splitDate[0]));
+  }
 }
 
 function findMostRecentDate(html) {
