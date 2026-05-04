@@ -155,10 +155,10 @@ const analyseDom = async (dom, { url = "" } = {}) => {
       const declarationDate = findMostRecentDate(declarationPageText);
 
       if (declarationDate.found) {
-        result.declarationDateFound = true;
+        result.declarationDate = declarationDate.mostRecentDate.toLocaleDateString("fr-FR", { year: 'numeric', month: 'long', day: 'numeric' });
         result.declarationIsUpToDate = declarationDate.isLessThan3Years;
       } else {
-        result.declarationDateFound = false;
+        result.declarationDate = undefined;
       }
     }
   }
