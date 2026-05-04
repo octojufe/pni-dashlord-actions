@@ -55,12 +55,15 @@ function parseDate(dateString) {
 }
 
 function findMostRecentDate(html) {
+  console.log("###### INSIDE FIND MOST RECENT DATE")
   const candidates = new Set();
   for (const pattern of DATE_PATTERNS) {
     for (const match of html.matchAll(pattern)) {
       candidates.add(match[1] || match[0]);
     }
   }
+
+  console.log("###### CANDIDATES : ", candidates)
 
   const validDates = [];
   for (const candidate of candidates) {
@@ -70,7 +73,7 @@ function findMostRecentDate(html) {
     }
   }
 
-  if (validDates.length === 0) return { found: false };
+  if (validDates.length === 0) return ({ found: false });
 
   validDates.sort((a, b) => b.date - a.date);
   const mostRecent = validDates[0];
@@ -138,8 +141,20 @@ const analyseDom = async (dom, { url = "" } = {}) => {
     }
 
     if (result.declarationUrl) {
-      const html = await fetch(result.declarationUrl).then(res => res.text());
-      const declarationDate = findMostRecentDate(html);
+      console.log("##### DECLARATION URL INSIDE IF : ", result.declarationUrl);
+
+      const resourceLoader = new jsdom.ResourceLoader({
+        strictSSL: false,
+        userAgent:
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0 - dashlord",
+      });
+      const declarationPageDom = await JSDOM.fromURL(result.declarationUrl, { resources: resourceLoader });
+      const declarationPageText = declarationPageDom.window.document.body.textContent;
+
+      const declarationDate = findMostRecentDate(declarationPageText);
+
+      console.log("###### DECLARATION DATE FOUND : ", declarationDate)
+
       if (declarationDate.found) {
         result.declarationDateFound = true;
         result.declarationIsUpToDate = declarationDate.isLessThan3Years;
