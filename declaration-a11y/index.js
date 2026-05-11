@@ -100,6 +100,32 @@ function findMostRecentDate(html) {
   })
 }
 
+async function loadPageTextContent(url) {
+  const resourceLoader = new jsdom.ResourceLoader({
+    strictSSL: false,
+    userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0 - dashlord",
+  });
+
+  let declarationPageText;
+  JSDOM.fromURL(url, {
+    resources: resourceLoader,
+    runScripts: 'dangerously',
+  }).then((dom) => {
+    return new Promise((resolve) => {
+      if (dom.window.onload !== null) {
+        dom.window.addEventListener("load", () => {
+          declarationPageText = dom.window.document.body.textContent;
+          resolve(declarationPageText)
+        });
+      } else {
+        declarationPageText = dom.window.document.body.textContent;
+        resolve(declarationPageText)
+      }
+    });
+  })
+}
+
 const analyseDom = async (dom, { url = "" } = {}) => {
   const text = dom.window.document.body.textContent;
 
@@ -151,13 +177,7 @@ const analyseDom = async (dom, { url = "" } = {}) => {
     }
 
     if (result.declarationUrl) {
-      const resourceLoader = new jsdom.ResourceLoader({
-        strictSSL: false,
-        userAgent:
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0 - dashlord",
-      });
-      const declarationPageDom = await JSDOM.fromURL(result.declarationUrl, { resources: resourceLoader });
-      const declarationPageText = declarationPageDom.window.document.body.textContent;
+      const declarationPageText = loadPageTextContent(result.declarationUrl);
       console.log("####### HTML TEXT CONTENT : ", declarationPageText);
 
       const declarationDate = findMostRecentDate(declarationPageText);
