@@ -69,6 +69,8 @@ function findMostRecentDate(html) {
     }
   }
 
+  console.log("###### CANDIDATES : ", candidates)
+
   const validDates = [];
   for (const candidate of candidates) {
     const date = parseDate(candidate);
@@ -77,6 +79,8 @@ function findMostRecentDate(html) {
     }
   }
 
+  console.log("###### VALID DATES : ", validDates);
+
   if (validDates.length === 0) return ({ found: false });
 
   validDates.sort((a, b) => b.date - a.date);
@@ -84,6 +88,8 @@ function findMostRecentDate(html) {
   const threeYearsAgo = new Date()
   threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
   const isLessThan3Years = mostRecent.date >= threeYearsAgo;
+
+  console.log("###### MOST RECENT DATE : ", mostRecent.date);
 
   return ({
     found: true,
@@ -96,6 +102,7 @@ function findMostRecentDate(html) {
 
 const analyseDom = async (dom, { url = "" } = {}) => {
   const text = dom.window.document.body.textContent;
+
   // fuzzy find the best match
   const status = mandatoryAccessibilityRate
     .map(({ needle }) => ({ needle, score: fuzzy(needle, text) }))
@@ -151,8 +158,11 @@ const analyseDom = async (dom, { url = "" } = {}) => {
       });
       const declarationPageDom = await JSDOM.fromURL(result.declarationUrl, { resources: resourceLoader });
       const declarationPageText = declarationPageDom.window.document.body.textContent;
+      console.log("####### HTML TEXT CONTENT : ", declarationPageText);
 
       const declarationDate = findMostRecentDate(declarationPageText);
+
+      console.log("###### DECLARATION DATE : ", declarationDate);
 
       if (declarationDate.found) {
         result.declarationDate = declarationDate.mostRecentDate.toLocaleDateString("fr-FR", { year: 'numeric', month: 'long', day: 'numeric' });
