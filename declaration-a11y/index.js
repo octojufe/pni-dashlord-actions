@@ -1,5 +1,6 @@
 const jsdom = require("jsdom");
 const { fuzzy } = require("fast-fuzzy");
+const {getHTML} = require("get-html/src/index");
 
 const { JSDOM } = jsdom;
 
@@ -177,7 +178,8 @@ const analyseDom = async (dom, { url = "" } = {}) => {
     }
 
     if (result.declarationUrl) {
-      const declarationPageText = loadPageTextContent(result.declarationUrl);
+      const declarationPageText = getHTML(result.declarationUrl);
+
       console.log("####### HTML TEXT CONTENT : ", declarationPageText);
 
       const declarationDate = findMostRecentDate(declarationPageText);
